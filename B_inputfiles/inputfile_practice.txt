@@ -1,0 +1,7 @@
+EncImg3	Cue1	Cue2	Alternative1	Alternative2	ExtLure1	ExtLure2	TrialType
+100_01.jpg	100_kreis01.png	100_kreis02.png	JPEG\100_01.jpg	JPEG\100_02.jpg	JPEG\130_01.jpg	JPEG\130_02.jpg	1
+648_01.jpg	648_kreis01.png	648_kreis02.png	JPEG\648_01.jpg	JPEG\648_02.jpg	JPEG\442_02.jpg	JPEG\442_01.jpg	1
+496_01.jpg	496_kreis01.png	496_kreis02.png	JPEG\496_01.jpg	JPEG\496_02.jpg	JPEG\308_02.jpg	JPEG\647_02.jpg	1
+419_01.jpg	419_kreis01.png	419_kreis02.png	JPEG\419_01.jpg	JPEG\419_02.jpg	JPEG\194_01.jpg	JPEG\430_01.jpg	1
+217_01.jpg	217_kreis01.png	217_kreis02.png	JPEG\217_01.jpg	JPEG\217_02.jpg	JPEG\223_02.jpg	JPEG\61_02.jpg	1
+220_01.jpg	220_kreis01.png	220_kreis02.png	JPEG\220_01.jpg	JPEG\220_02.jpg	JPEG\61_02.jpg	JPEG\223_02.jpg	1
