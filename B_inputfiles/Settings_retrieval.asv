@@ -33,9 +33,7 @@ breakAfterTrials1 = 20;
 breakAfterTrials2 = 40;
 breakAfterTrials3 = 60;
 breakAfterTrials4 = 80;
-breakAfterTrials5 = 100;
-breakAfterTrials6 = 120;
-
+breakAfterTrials5 = ;
 
 
 % Colors: choose a number from 0 (black) to 255 (white)
@@ -46,7 +44,8 @@ crossColor = 255;
 textColor = 255;
 
 % How long (in seconds) each image in the RETRIEVAL task will stay on screen
-room_duration = 4.5; 
+cue_duration = 4.5; 
+selection_timeout = 5; 
 classification_timeout1=3; %old vs new
 classification_timeout2=3; %sure vs unsure
 
