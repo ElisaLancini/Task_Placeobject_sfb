@@ -1,5 +1,4 @@
 %%%%%%%%%%%%%%%%%%%%% (B) Encoding Session %%%%%%%%%%%%%%%%%%%%%%%%
-%%%% DO IT
 %%% Information %%%
 
 % 60 stimuli (rooms with objects) *2 = 120
@@ -19,13 +18,14 @@
 
 %%% Design %%%
 
-% Fixation cross 1, 2 ,3 = ISI
-% Room           = 7
-% Selection      = 3
-% Feedback       = 3
-% Fixation cross = 2
-% EmoPic         = 3
-% Pauses         = 20 / 40 / 60 / 80 / 100 / 120 trials, 
+% Fixation cross 1, 2 ,3 ,5 = ISI
+% Room                      = 7
+% Selection                 = 3
+% Feedback                  = 3
+% Fixation cross 4          = 2
+% EmoPic                    = 3
+% Classification            = 3
+% Pauses                    = 20 / 40 / 60 / 80 / 100 / 120 trials, 
 
 % After 60 trials the same pictures
 % are presented but with another cue. Unlimited time
@@ -50,15 +50,16 @@ addpath(genpath(path.ptb));%% 2. Subject infos
 %% 2. Subject infos
 
 % Subject informations
-input_prompt = {'Participant number'; 'Condition A'; 'YA(1)/ OA (2)?';'Session (1= prac.Enc / 2= enc / 3= prac.Retr / 4=retr)'};
-input_defaults     = {'01','1','99','99'}; % Mostra input default per non guidare l'inserimento
+input_prompt = {'Participant number'; 'Condition A'; 'Condition B'; 'YA(1)/ OA (2)?';'Session (1= prac.Enc / 2= enc / 3= prac.Retr / 4=retr)'};
+input_defaults     = {'01','1', '1', '99','99'}; % Mostra input default per non guidare l'inserimento
 input_answer = inputdlg(input_prompt, 'Informations', 1, input_defaults);
 clear input_defaults input_prompt
 %Modifiy class of variables
 ID          = str2num(input_answer{1,1});
-ConditionA  = str2num(input_answer{2,1});
-Group       = str2num(input_answer{3,1});
-Session     = str2num(input_answer{4,1});
+ConditionA  = str2num(input_answer{2,1}); % ISI randomization
+ConditionB  = str2num(input_answer{3,1}); % Ja / Nein
+Group       = str2num(input_answer{4,1}); % Age group
+Session     = str2num(input_answer{5,1}); % stimuli from previous task to be presented
 
 % Check if is the experimenter is using the right script
 if Session ~= 2
@@ -68,23 +69,9 @@ end
 
 % Check if Conditions are >1 and <2 , otherwise error will occur
 
-if ConditionA > 2 || ConditionA == 0
-    errordlg('Condition does not esist, check','Condition error');
+if ConditionA > 2 || ConditionB > 2 || ConditionA == 0 || ConditionB == 0
+    errordlg('Condition does not eist, check','Condition error');
     return
-end
-
-% Check if data already exist
-cd(path.res)
-if exist([num2str(ID) '_' num2str(Session) '_randinfo.mat']) == 2
-    check_prompt = {'(1) Append a "r" / (2) Overwrite /(3) Break'};
-    check_defaults     = {'1'}; % default input
-    check_answer = inputdlg(check_prompt, '!! Data already exist !!', 1, check_defaults);
-    check_decision= str2double(check_answer); % Depending on the decision..
-    if check_decision == 1
-        ID= [num2str(ID) '_R']; %append r to filename
-    elseif check_decision == 3  %break
-        return;
-    end
 end
 
 clear input_answer
@@ -95,8 +82,14 @@ Settings_encoding;
 %% 4. Pre allocate variables
 
 response_key=zeros(numTrials*2,1); %Key pressed
+response_key_question=zeros(numTrials,1);
+
 response_time=zeros(numTrials*2,1); %Time of key press
+response_time_question=zeros(numTrials,1);
+
 response_kbNum=zeros(numTrials*2,1); %Number of key pressed
+response_kbNum_question=zeros(numTrials,1);
+
 idx=[]; %Index of cue of the first block (cue 1 or cue 2?)
 time_pause=zeros(1,140);
 time_end=999;
@@ -107,7 +100,7 @@ events=cell(1,2);
 load('inputfile.mat');
 inputfile=uploadedfile;
 clear uploadedfile
-load('inputfile_new60.mat');
+load('inputfile_new.mat');
 inputfile_newstim=uploadedfile;
 load('inputfile_emopics_negative.mat');
 inputfile_emopics_negative=uploadedfile;
@@ -138,6 +131,11 @@ end
 % 2.1 Randomize rows (rooms and emotional stimuli)
 idx= randi(2,numTrials,1); % create vector with random 1 and 2, that represents cue type 1 or 2 for each row
 idx_emopic = mod( reshape(randperm(numTrials*1), numTrials, 1), 2 ); % index for emotional pictures, 50% type 1 50% type 2 
+
+% -----
+% 2.1 Randomize rows (rooms and emotional stimuli)
+idx= randi(2,numTrials,1); % create vector with random 1 and 2, that represents cue type 1 or 2 for each row
+idx_emopic = mod( reshape(randperm(numTrials*1), numTrials, 1), 2 ); % index for emotional pictures, 50% type 1 50% type 2 
 rows1=(1:numTrials); % create vector with all row numbers in order (from 1 to 50)
 rows_rand1=rows1(randperm(length(rows1)))'; % Randomize the order of the numbers in this vector
 rows2=(numTrials+1:numTrials*2); % create vector with all row numbers in order (from 51 to 100)
@@ -149,6 +147,8 @@ rows_rand_emopics_neutral=(rows_emopics_neutral(randperm(length(rows_emopics_neu
 rows_rand_emopics_negative=(rows_emopics_negative(randperm(length(rows_emopics_negative))))';
 
 clear rows1 rows2
+
+% 2.2 Re-order stimuli
 
 % 2.2 Re-order every row depending on the new row list and randomize cue
 for n=1:numTrials %
@@ -208,7 +208,6 @@ clear type x y n
  stimuli_list{1, 8}{where_zeros(x), 1} = inputfile_emopics_neutral{1, 1}{rows_rand_emopics_neutral(x), 1};
  end
  
-
  for i=1:numTrials
  new_position_inputfiles{i, 1}=inputfile{1, 1}{i, 1};
  new_position_inputfiles{i, 2}=rows_rand1(i,1);
@@ -217,11 +216,13 @@ clear type x y n
  new_position_inputfiles{i, 5}=stimuli_list{1, 1}{i+numTrials, 1};
  new_position_inputfiles{i, 6}=stimuli_list{1, 6}{i, 1}; % type of emopic block 1
  new_position_inputfiles{i, 7}=stimuli_list{1, 6}{i+numTrials, 1}; % type of emopic block 2
- new_position_inputfiles{i, 8}=stimuli_list{1, 7}{i, 1}; % type of cue block 1
- new_position_inputfiles{i, 9}=stimuli_list{1, 7}{i+numTrials, 1}; % type of cue block 2
+ new_position_inputfiles{i, 8}=stimuli_list{1, 8}{i, 1}; % emopic name
+ new_position_inputfiles{i, 9}=stimuli_list{1, 8}{i+numTrials, 1}; %emopicname
+ new_position_inputfiles{i, 10}=stimuli_list{1, 7}{i, 1}; % type of cue block 1
+ new_position_inputfiles{i, 11}=stimuli_list{1, 7}{i+numTrials, 1}; % type of cue block 2
  end
  
-header={'Inputfile_name', 'first_block_pos','second_block_pos','first_block_name','second_block_name','emopic_type_block1','emopic_type_block2','cue_type_block1','cue_type_block2'};
+header={'Inputfile_name', 'first_block_pos','second_block_pos','first_block_name','second_block_name','emopic_type_block1','emopic_type_block2','first_block_emopic','second_block_emopic','cue_type_block1','cue_type_block2'};
 new_position_inputfiles_table=cell2table(new_position_inputfiles,'VariableNames',header);
 clear header 
 
@@ -253,6 +254,7 @@ ISI= [design_struct.eventlist(:, 4);design_struct.eventlist(:, 4)]; %PTB uses se
 fixation_duration(:,1)=ISI(1:4:1200) ; %fixation cross 1
 fixation_duration(:,2)=ISI(2:4:1200) ; %fixation cross 2
 fixation_duration(:,3)=ISI(3:4:1200) ; %fixation cross 3 
+fixation_duration(:,5)=ISI(3:4:1200) ; %fixation cross 5 
 
 
 
@@ -402,8 +404,59 @@ for i = 1:numTrials*2
     Screen('DrawTexture', windowPtr, pic_emo_texture, [], topcentral);
     t_emopic_onset(i)= Screen('Flip', windowPtr, t_fixation_offset4(i)-slack); % show image
     t_emopic_offset(i)= Screen('Flip', windowPtr, t_emopic_onset(i)+emopic_duration-slack); % show image
-    t_last_onset(i+1)=t_emopic_offset(i);
+    % ---------- Fixation cross 4 ---------- %
+    crossLines= [-crossLenght, 0 ; crossLenght, 0; 0 , -crossLenght; 0, crossLenght];
+    crossLines= crossLines';
+    Screen('DrawLines', windowPtr, crossLines, crossWidth, crossColor, [xCenter, yCenter]);
+    t_fixation_onset5(i)=Screen('Flip',windowPtr, t_emopic_offset(i)-slack);
+    t_fixation_offset5(i)=Screen('Flip',windowPtr,t_fixation_onset5(i)+fixation_duration(i,5)-slack);
+    % ------- Indoor/Outdoor? ------------% 
+        Screen('TextSize', windowPtr,50);
+        Screen('TextFont', windowPtr,'Helvetica');
+        Screen('TextStyle', windowPtr,4);
+        % Draw text
+        if ConditionB==1
+            line1=' Indoor      Outdoor';
+        elseif ConditionB==2
+            line1=' Outdoor      Indoor';
+        end
+        DrawFormattedText(windowPtr,line1, 'center','center', textColor);
+        t_classification_onset(i)= Screen('Flip', windowPtr, t_fixation_offset5(i)-slack);
+        %Record response
+        FlushEvents('keyDown')
+        t1 = GetSecs;
+        time = 0;
+        while time < classification_timeout
+            [keyIsDown,t2,keyCode] = KbCheck; %determine state of keyboard
+            time = t2-t1 ;
+            if (keyIsDown) %has a key been pressed?
+                key = KbName(find(keyCode));
+                type= class(key);
+                if type == 'cell' %If two keys pressed simultaneously, then 0
+                    response_key_question(i,1)= 99;
+                    response_kbNum_question(i,1)= 99;
+                    response_time_question(i,1)=99;
+                elseif key== 'a'
+                    response_key_question(i,1)= 1; %if a was pressed, 1
+                    response_time_question(i,1) =time;
+                    response_kbNum_question(i,1)=  find(keyCode);
+                elseif key == 'l'
+                    response_key_question(i,1) =2; %if l was pressed, 2
+                    response_time_question(i,1) =time;
+                    response_kbNum_question(i,1)=  find(keyCode);
+                elseif key == 't'
+                    events{1, 1}= 'Script aborted' ;
+                    events{1, 2}= i ;
+                    events{1, 3}= toc(startscript) ;
+                    sca %A red error line in the command window will occur:  "Error using Screen".
+                end
+            end
+        end
+        t_classification_offset(i)= Screen('Flip', windowPtr, t_classification_onset(i)+classification_timeout-slack);
     
+    % ---- create last onset variable ------
+    t_last_onset(i+1)=t_classification_offset(i);
+
     % --------- Pauses --------- %
     
     % Intermediate pauses (4 for OA , 2 for YA)
@@ -552,6 +605,8 @@ timing.fixation_onset3=t_fixation_onset3;
 timing.fixation_offset3=t_fixation_offset3;
 timing.fixation_onset4=t_fixation_onset4;  
 timing.fixation_offset4=t_fixation_offset4;
+timing.fixation_onset5=t_fixation_onset5;  
+timing.fixation_offset5=t_fixation_offset5;
 timing.ISI_fixation_duration=fixation_duration;
 timing.room_onset=t_room_onset; % room
 timing.room_offset=t_room_offset;
@@ -559,8 +614,10 @@ timing.selection_onset=t_selection_onset; % selection
 timing.selection_offset=t_selection_offset;
 timing.feedback_onset=t_feedback_onset; % feedback
 timing.feedback_offset=t_feedback_offset;
-timing.emopic_onset=t_feedback_onset; % emoPics
-timing.feedback_offset=t_feedback_offset;
+timing.emopic_onset=t_emopic_onset; % emoPics
+timing.emopic_offset=t_emopic_offset;
+timing.classification_onset=t_classification_onset; % classification
+timing.classification_offset=t_classification_offset;
 timing.end_onset=t_end_onset; %end screen
 timing.end_offset=t_end_offset;
 timing.slack=slack; % slack (difference between screen flip and VBL)
@@ -569,8 +626,10 @@ timing.slack=slack; % slack (difference between screen flip and VBL)
 participant_info.ID=ID;
 participant_info.age_group=Group;
 participant_info.group_ISI=ConditionA;
+participant_info.aswers_presentation=ConditionB;
 
-new_position_inputfiles_table
+
+new_position_inputfiles_table;
 %% 13. Save results
 save([path.res num2str(ID) '_' num2str(Session) '.mat']...
     , 'participant_info' ...

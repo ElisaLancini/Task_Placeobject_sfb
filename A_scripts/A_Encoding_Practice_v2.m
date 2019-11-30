@@ -6,9 +6,11 @@
 % Feedback             = 3
 % Fixation cross 4     = 2
 % EmoPic               = 5
+% Classification       = 3
 
-%5 stimuli * 2 = 10
-% pause after 5 stimuli
+
+%6 stimuli * 2 = 12
+% pause after 6 stimuli
 % response recording
 
 clearvars
@@ -24,20 +26,19 @@ path.config  = [ path.root 'C_ISIfiles\'];
 path.ptb   =  '/Users/elancini/Documents/MATLAB/Psychtoolbox/';% Path PTB
 path.gstreamer= 'C:\gstreamer\1.0\x86_64\bin';
 addpath(genpath(path.ptb));%% 2. Subject infos
-
-
 %% 2. Subject infos
 
 % Subject informations
-input_prompt = {'Participant number'; 'Condition A'; 'YA(1)/ OA (2)?';'Session (1= prac.Enc / 2= enc / 3= prac.Retr / 4=retr)'};
-input_defaults     = {'01','1','99','99'}; % Mostra input default per non guidare l'inserimento
+input_prompt = {'Participant number'; 'Condition A'; 'Condition B'; 'YA(1)/ OA (2)?';'Session (1= prac.Enc / 2= enc / 3= prac.Retr / 4=retr)'};
+input_defaults     = {'01','1', '1', '99','99'}; % Mostra input default per non guidare l'inserimento
 input_answer = inputdlg(input_prompt, 'Informations', 1, input_defaults);
 clear input_defaults input_prompt
 %Modifiy class of variables
 ID          = str2num(input_answer{1,1});
-ConditionA  = str2num(input_answer{2,1});
-Group       = str2num(input_answer{3,1});
-Session     = str2num(input_answer{4,1});
+ConditionA  = str2num(input_answer{2,1}); % ISI randomization
+ConditionB  = str2num(input_answer{3,1}); % Ja / Nein
+Group       = str2num(input_answer{4,1}); % Age group
+Session     = str2num(input_answer{5,1}); % stimuli from previous task to be presented
 
 % Check if is the experimenter is using the right script
 if Session ~= 1
@@ -45,48 +46,47 @@ if Session ~= 1
     return
 end
 
-% Check if data already exist 
-cd(path.res) 
-if exist([num2str(ID) '_' num2str(Session) '_randinfo.mat']) == 2
-    check_prompt = {'(1) Append a r / (2) Overwrite /(3) Break'};
-    check_defaults     = {'1'}; % default input
-    check_answer = inputdlg(check_prompt, 'No bueno', 1, check_defaults);
-    check_decision= str2double(check_answer); % Depending on the decision..
-    if check_decision == 1
-        ID= [num2str(ID) '_R']; %append r to filename
-    elseif check_decision == 3  %break
-        return;
-    end
+% Check if Conditions are >1 and <2 , otherwise error will occur
+
+if ConditionA > 2 || ConditionB > 2 || ConditionA == 0 || ConditionB == 0
+    errordlg('Condition does not eist, check','Condition error');
+    return
 end
 
-
 clear input_answer
-%% 2. Load settings
+%% 3. Load settings
 cd(path.input)
 Settings_encoding_practice;
-% Create variables
-idx=[];
 
 %% 4. Pre allocate variables
 
 response_key=zeros(numTrials*2,1); %Key pressed
+response_key_question=zeros(numTrials,1);
+
 response_time=zeros(numTrials*2,1); %Time of key press
+response_time_question=zeros(numTrials,1);
+
 response_kbNum=zeros(numTrials*2,1); %Number of key pressed
+response_kbNum_question=zeros(numTrials,1);
+
 idx=[]; %Index of cue of the first block (cue 1 or cue 2?)
-time_pause=zeros(1,numTrials*2);
+time_pause=zeros(1,140);
 time_end=999;
 events=cell(1,2);
 
 %% 5. Load stimuli list (inputfile)
 
-load('inputfile_practice.mat');
+load('inputfile.mat');
 inputfile=uploadedfile;
 clear uploadedfile
-load('inputfile_emopics_negative_practice.mat');
+load('inputfile_new.mat');
+inputfile_newstim=uploadedfile;
+load('inputfile_emopics_negative.mat');
 inputfile_emopics_negative=uploadedfile;
 clear uploadedfile
-load('inputfile_emopics_neutral_practice.mat');
+load('inputfile_emopics_neutral.mat');
 inputfile_emopics_neutral=uploadedfile;
+
 
 %% 6. Randomization
 
@@ -110,17 +110,24 @@ end
 % 2.1 Randomize rows (rooms and emotional stimuli)
 idx= randi(2,numTrials,1); % create vector with random 1 and 2, that represents cue type 1 or 2 for each row
 idx_emopic = mod( reshape(randperm(numTrials*1), numTrials, 1), 2 ); % index for emotional pictures, 50% type 1 50% type 2 
+
+% -----
+% 2.1 Randomize rows (rooms and emotional stimuli)
+idx= randi(2,numTrials,1); % create vector with random 1 and 2, that represents cue type 1 or 2 for each row
+idx_emopic = mod( reshape(randperm(numTrials*1), numTrials, 1), 2 ); % index for emotional pictures, 50% type 1 50% type 2 
 rows1=(1:numTrials); % create vector with all row numbers in order (from 1 to 50)
 rows_rand1=rows1(randperm(length(rows1)))'; % Randomize the order of the numbers in this vector
 rows2=(numTrials+1:numTrials*2); % create vector with all row numbers in order (from 51 to 100)
 rows_rand2=rows2(randperm(length(rows2)))'; % Randomize the order of the numbers in this vector
 rows_rand=[rows_rand1;rows_rand2]; % randomized rows in block 1 and block 2 together.
-rows_emopics_neutral=1:50; % emopics
-rows_emopics_negative=1:50;
+rows_emopics_neutral=1:numTrials; % emopics
+rows_emopics_negative=1:numTrials;
 rows_rand_emopics_neutral=(rows_emopics_neutral(randperm(length(rows_emopics_neutral))))';
 rows_rand_emopics_negative=(rows_emopics_negative(randperm(length(rows_emopics_negative))))';
 
 clear rows1 rows2
+
+% 2.2 Re-order stimuli
 
 % 2.2 Re-order every row depending on the new row list and randomize cue
 for n=1:numTrials %
@@ -179,8 +186,7 @@ clear type x y n
  stimuli_list{1, 8}{where_ones (x), 1} = inputfile_emopics_negative{1, 1}{rows_rand_emopics_negative(x), 1};
  stimuli_list{1, 8}{where_zeros(x), 1} = inputfile_emopics_neutral{1, 1}{rows_rand_emopics_neutral(x), 1};
  end
-
-  
+ 
  for i=1:numTrials
  new_position_inputfiles{i, 1}=inputfile{1, 1}{i, 1};
  new_position_inputfiles{i, 2}=rows_rand1(i,1);
@@ -189,16 +195,16 @@ clear type x y n
  new_position_inputfiles{i, 5}=stimuli_list{1, 1}{i+numTrials, 1};
  new_position_inputfiles{i, 6}=stimuli_list{1, 6}{i, 1}; % type of emopic block 1
  new_position_inputfiles{i, 7}=stimuli_list{1, 6}{i+numTrials, 1}; % type of emopic block 2
- new_position_inputfiles{i, 8}=stimuli_list{1, 7}{i, 1}; % type of cue block 1
- new_position_inputfiles{i, 9}=stimuli_list{1, 7}{i+numTrials, 1}; % type of cue block 2
+ new_position_inputfiles{i, 8}=stimuli_list{1, 8}{i, 1}; % emopic name
+ new_position_inputfiles{i, 9}=stimuli_list{1, 8}{i+numTrials, 1}; %emopicname
+ new_position_inputfiles{i, 10}=stimuli_list{1, 7}{i, 1}; % type of cue block 1
+ new_position_inputfiles{i, 11}=stimuli_list{1, 7}{i+numTrials, 1}; % type of cue block 2
  end
  
-header={'Inputfile_name', 'first_block_pos','second_block_pos','first_block_name','second_block_name','emopic_type_block1','cue_type_block1','emopic_type_block2','cue_type_block2'};
+header={'Inputfile_name', 'first_block_pos','second_block_pos','first_block_name','second_block_name','emopic_type_block1','emopic_type_block2','first_block_emopic','second_block_emopic','cue_type_block1','cue_type_block2'};
 new_position_inputfiles_table=cell2table(new_position_inputfiles,'VariableNames',header);
 clear header 
 
-%  ISI is already in settings
- 
 % --------------  Randomize stimuli position on the screen -------------- %
 
 % Monitor
@@ -345,36 +351,86 @@ for i = 1:numTrials*2
     Screen('DrawTexture', windowPtr, pic_emo_texture, [], topcentral);
     t_emopic_onset(i)= Screen('Flip', windowPtr, t_fixation_offset4(i)-slack); % show image
     t_emopic_offset(i)= Screen('Flip', windowPtr, t_emopic_onset(i)+emopic_duration-slack); % show image
-    t_last_onset(i+1)=t_emopic_offset(i);
-    
-   % --------- Half stimuli pause --------- %
-        
-        if i == numTrials
-            Screen('TextSize', windowPtr,50);               %Set text size
-            Screen('TextFont', windowPtr,'Helvetica');      %Set font
-            Screen('TextStyle', windowPtr,4);               %Set style
-            line1='Die Halfte des Experiments ist abgeschlossen.';              %Set text, location (xy)and color
-            line2='\n Jetzt sehen Sie wieder dasselbe Bild mit ';
-            line3= '\n dem Kreis in der entgegengesetzten';
-            line4= '\n Position wie zuvor';
-            line5='\n\n Druecken Sie die Leertaste, um zu starten';
-            DrawFormattedText(windowPtr,[line1 line2 line3 line4 line5], 'center','center', textColor);    %Show the results on the screen
-            t_pause_onset(i)= Screen('Flip', windowPtr); % show image
-            startpause=tic; % start counting the seconds of pause
-            %Wait untile spacebar is pressed
-            while 1
-                [keyIsDown,secs,keyCode] = KbCheck;
-                if keyCode(KbName('SPACE'))==1
-                    break
+    % ---------- Fixation cross 4 ---------- %
+    crossLines= [-crossLenght, 0 ; crossLenght, 0; 0 , -crossLenght; 0, crossLenght];
+    crossLines= crossLines';
+    Screen('DrawLines', windowPtr, crossLines, crossWidth, crossColor, [xCenter, yCenter]);
+    t_fixation_onset5(i)=Screen('Flip',windowPtr, t_emopic_offset(i)-slack);
+    t_fixation_offset5(i)=Screen('Flip',windowPtr,t_fixation_onset5(i)+fixation_duration_5-slack);
+    % ------- Indoor/Outdoor? ------------% 
+        Screen('TextSize', windowPtr,50);
+        Screen('TextFont', windowPtr,'Helvetica');
+        Screen('TextStyle', windowPtr,4);
+        % Draw text
+        if ConditionB==1
+            line1=' Indoor      Outdoor';
+        elseif ConditionB==2
+            line1=' Outdoor      Indoor';
+        end
+        DrawFormattedText(windowPtr,line1, 'center','center', textColor);
+        t_classification_onset(i)= Screen('Flip', windowPtr, t_fixation_offset5(i)-slack);
+        %Record response
+        FlushEvents('keyDown')
+        t1 = GetSecs;
+        time = 0;
+        while time < classification_timeout
+            [keyIsDown,t2,keyCode] = KbCheck; %determine state of keyboard
+            time = t2-t1 ;
+            if (keyIsDown) %has a key been pressed?
+                key = KbName(find(keyCode));
+                type= class(key);
+                if type == 'cell' %If two keys pressed simultaneously, then 0
+                    response_key_question(i,1)= 99;
+                    response_kbNum_question(i,1)= 99;
+                    response_time_question(i,1)=99;
+                elseif key== 'a'
+                    response_key_question(i,1)= 1; %if a was pressed, 1
+                    response_time_question(i,1) =time;
+                    response_kbNum_question(i,1)=  find(keyCode);
+                elseif key == 'l'
+                    response_key_question(i,1) =2; %if l was pressed, 2
+                    response_time_question(i,1) =time;
+                    response_kbNum_question(i,1)=  find(keyCode);
+                elseif key == 't'
+                    events{1, 1}= 'Script aborted' ;
+                    events{1, 2}= i ;
+                    events{1, 3}= toc(startscript) ;
+                    sca %A red error line in the command window will occur:  "Error using Screen".
                 end
             end
-            time_pause(i)=toc(startpause); % how many seconds of pause did the participant take?
-            clear tic % so it doesn't interfere with the main tic
-            t_pause_offset(i)=t_pause_onset(i)+secs-slack; %variable that in the loop becames the fixation timestamp
         end
-        
+        t_classification_offset(i)= Screen('Flip', windowPtr, t_classification_onset(i)+classification_timeout-slack);
+    
+    % ---- create last onset variable ------
+    t_last_onset(i+1)=t_classification_offset(i);
+
+    % --------- Pauses --------- %
+    
+    % Intermediate pauses (4 for OA , 2 for YA)
+    if i== breakAfterHalfTrials
+        line1='Die Halfte des Experiments ist abgeschlossen.';              %Set text, location (xy)and color
+        line2='\n';
+        line3='\n\n Drucken Sie die Leertaste, um zu starten';
+        DrawFormattedText(windowPtr,[line1 line2 line3], 'center','center', textColor);    %Show the results on the screen
+        t_pause_onset(i)= Screen('Flip', windowPtr); % show image
+        startpause=tic; % start counting the seconds of pause
+        %Wait untile spacebar is pressed
+        while 1
+            [keyIsDown,secs,keyCode] = KbCheck;
+            if keyCode(KbName('SPACE'))==1
+                break
+            end
+        end
+        time_pause(i)=toc(startpause); % how many seconds of pause did the participant take?
+        clear tic % so it doesn't interfere with the main tic
+        t_pause_offset(i)=t_pause_onset(i)+secs-slack; %variable that in the loop becames the fixation timestamp
     end
-    time_end=toc(startscript); %calculate time for completing entire taskg entire task
+end
+    
+
+    
+
+time_end=toc(startscript); %calculate time for completing entire task
 
 %%  -------- End screen -------- %
 Screen('TextSize', windowPtr,50); %Set text size
@@ -427,7 +483,6 @@ for r=1:length(response_key)
         answers(r,1)= 99; % multiple response were made
     end
 end
-
 %% 11. Resume
 
 % Total results
@@ -438,37 +493,37 @@ results.missed=sum(answers==0);
 results.multiple=sum(answers==99);
 results.totalresponse=sum(results.hints+results.falseallarm+results.errors); % might not work....
 
-% Trial related results (task trial (1) /control trial (0))
+% Trial related results (negative emopic follows(1) /neutral emopic follows (0))
 for i = 1:numTrials*2
     
     if stimuli_list{1, 6}{i, 1} == 1
-        taskanswers(i,1)= answers(i,1)   ;
-        controlanswers(i,1) = 0   ; %if it is not
+        negative_emopic_answers(i,1)= answers(i,1)   ;
+        neutral_emopic_answers(i,1) = 0   ; %if it is not
     else
-        controlanswers(i,1) = answers(i,1)   ;
-        taskanswers(i,1)= 1    ;
+        neutral_emopic_answers(i,1) = answers(i,1)   ;
+        negative_emopic_answers(i,1)= 1    ;
     end
 end
 
 % Total results
-results.hints_1=sum(taskanswers==1);
-results.falseallarm_1=sum(taskanswers==2);
-results.errors_1=sum(taskanswers==3);
-results.missed_1=sum(taskanswers==0);
-results.multiple_1=sum(taskanswers==99);
+results.hints_1=sum(negative_emopic_answers==1);
+results.falseallarm_1=sum(negative_emopic_answers==2);
+results.errors_1=sum(negative_emopic_answers==3);
+results.missed_1=sum(negative_emopic_answers==0);
+results.multiple_1=sum(negative_emopic_answers==99);
 results.totalresponse_1=sum(results.hints_1+results.falseallarm_1+results.errors_1); %might not work.....
 
-results.hints_0=sum(controlanswers==1);
-results.falseallarm_0=sum(controlanswers==2);
-results.errors_0=sum(controlanswers==3);
-results.missed_0=sum(controlanswers==0);
-results.multiple_0=sum(controlanswers==99);
+results.hints_0=sum( neutral_emopic_answers==1);
+results.falseallarm_0=sum( neutral_emopic_answers==2);
+results.errors_0=sum( neutral_emopic_answers==3);
+results.missed_0=sum( neutral_emopic_answers==0);
+results.multiple_0=sum( neutral_emopic_answers==99);
 results.totalresponse_0=sum(results.hints_0+results.falseallarm_0+results.errors_0); %might not work....
 
 %% 12. Save
 stimuli.stimuli_randomized= stimuli_list;
 stimuli.row_randomization= rows_rand;
-stimuli.labels={'EncImg3','Cue','Right Alternative','Wrong Alternative2','ExtLure','TrialType','CueType','EmoPic'};
+stimuli.labels={'EncImg3','Cue','Right Alternative','Wrong Alternative2','ExtLure','TrialType(Neutral=0/Negative=1)','CueType','EmoPic'};
 stimuli.emopics_negative_row_randomization=rows_rand_emopics_negative;
 stimuli.emopics_neutral_row_randomization=rows_rand_emopics_neutral;
 stimuli.choice_position = stimuli_choice_pos;
@@ -478,8 +533,8 @@ answer.response_kbNum=response_kbNum;
 answer.response_key  =response_key;
 answer.response_time =response_time;
 answer.all_answers   = answers;
-answer.task_answers = taskanswers;
-answer.control_answers = controlanswers;
+answer.negative_pic_answers = negative_emopic_answers;
+answer.neutral_pic_answers = neutral_emopic_answers;
 
 timing.end=(time_end/60); %from seconds to minutes (are now in msec because calculated by Matlab)
 timing.pause=time_pause/60;
@@ -492,15 +547,19 @@ timing.fixation_onset3=t_fixation_onset3;
 timing.fixation_offset3=t_fixation_offset3;
 timing.fixation_onset4=t_fixation_onset4;  
 timing.fixation_offset4=t_fixation_offset4;
-timing.ISI_fixation_duration=[fixation_duration_1;fixation_duration_2;fixation_duration_3;fixation_duration_4];
+timing.fixation_onset5=t_fixation_onset5;  
+timing.fixation_offset5=t_fixation_offset5;
+% timing.ISI_fixation_duration=fixation_duration;
 timing.room_onset=t_room_onset; % room
 timing.room_offset=t_room_offset;
 timing.selection_onset=t_selection_onset; % selection
 timing.selection_offset=t_selection_offset;
 timing.feedback_onset=t_feedback_onset; % feedback
 timing.feedback_offset=t_feedback_offset;
-timing.emopic_onset=t_feedback_onset; % emoPics
-timing.feedback_offset=t_feedback_offset;
+timing.emopic_onset=t_emopic_onset; % emoPics
+timing.emopic_offset=t_emopic_offset;
+timing.classification_onset=t_classification_onset; % classification
+timing.classification_offset=t_classification_offset;
 timing.end_onset=t_end_onset; %end screen
 timing.end_offset=t_end_offset;
 timing.slack=slack; % slack (difference between screen flip and VBL)
@@ -509,6 +568,8 @@ timing.slack=slack; % slack (difference between screen flip and VBL)
 participant_info.ID=ID;
 participant_info.age_group=Group;
 participant_info.group_ISI=ConditionA;
+participant_info.aswers_presentation=ConditionB;
+
 
 new_position_inputfiles_table;
 %% 13. Save results
