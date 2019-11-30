@@ -45,7 +45,8 @@ fixation_duration_1= 3;
 fixation_duration_2= 2; 
 fixation_duration_3= 1; 
 fixation_duration_4= 2; 
-
+fixation_duration_5=2;
+classification_timeout=3;
 
 % Timeout settings
 RestrictKeysForKbCheck(activeKeys);

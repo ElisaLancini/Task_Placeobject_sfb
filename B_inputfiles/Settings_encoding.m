@@ -48,6 +48,8 @@ selection_timeout = 3; %3000 msec in youngs, 3500 in old max
 feedback_duration = 3; 
 emopic_duration= 5;
 fixation_duration_4=2;
+classification_timeout=3;
+
 % fixation duration is on ITI configfile
 
 % Timeout settings
